@@ -1,7 +1,7 @@
 import math
 import os
 import random
-import sys  
+import sys
 import time
 
 import pygame as pg
@@ -97,8 +97,8 @@ class Bird(pg.sprite.Sprite):
         引数2 screen：画面Surface
         """
         sum_mv = [0, 0]
-        if self.state == "hyper":  #ハイパーの分岐
-            self.hyper_life -= 1  #時間制限
+        if self.state == "hyper":  # ハイパーの分岐
+            self.hyper_life -= 1  # 時間制限
             if self.hyper_life < 0:
                 self.state = "normal"
         for k, mv in __class__.delta.items():
@@ -111,7 +111,7 @@ class Bird(pg.sprite.Sprite):
         if not (sum_mv[0] == 0 and sum_mv[1] == 0):
             self.dire = tuple(sum_mv)
             self.image = self.imgs[self.dire]
-        if self.state == "hyper":  #ハイパーになったときにラプラシアンフィルタ
+        if self.state == "hyper":  # ハイパーになったときにラプラシアンフィルタ
             self.image = pg.transform.laplacian(self.image)
         screen.blit(self.image, self.rect)
 
@@ -151,6 +151,7 @@ class Bomb(pg.sprite.Sprite):
         self.rect.centery = emy.rect.centery + emy.rect.height // 2
         self.speed = 6
         self.state = "active"
+
     def update(self):
         """
         爆弾を速度ベクトルself.vx, self.vyに基づき移動させる
@@ -233,6 +234,7 @@ class Shield(pg.sprite.Sprite):
     """
     防御壁に関するクラス
     """
+
     def __init__(self, bird: Bird, life: int):
         """
         防御壁Surfaceを生成する
@@ -263,8 +265,10 @@ class Shield(pg.sprite.Sprite):
         self.image.set_colorkey((0, 0, 0))  # 回転後も透明化を適用
         self.rect = self.image.get_rect()
         self.rect.center = (
-            self.bird.rect.centerx + math.cos(math.radians(angle)) * self.bird.rect.width,
-            self.bird.rect.centery - math.sin(math.radians(angle)) * self.bird.rect.height
+            self.bird.rect.centerx
+            + math.cos(math.radians(angle)) * self.bird.rect.width,
+            self.bird.rect.centery
+            - math.sin(math.radians(angle)) * self.bird.rect.height,
         )
 
     def update(self):
@@ -386,8 +390,9 @@ class EMP(pg.sprite.Sprite):
     """
     EMP（電磁パルス）に関するクラス
     スコア20以上で'e'を押すと発動
-    
+
     """
+
     def __init__(self, emys: pg.sprite.Group, bombs: pg.sprite.Group):
         super().__init__()
         self.life = 3
@@ -395,7 +400,6 @@ class EMP(pg.sprite.Sprite):
         self.Enemy = emys
         self.Bomb = bombs
         self.screen = pg.Surface
-
 
         for emy in emys:
             emy.interval = math.inf  # 爆弾投下できなくなる
@@ -405,23 +409,16 @@ class EMP(pg.sprite.Sprite):
             bomb.speed *= 0.5
             bomb.state = "inactive"
 
-
         # 背景
         self.image = pg.Surface((WIDTH, HEIGHT))
         pg.draw.rect(self.image, (244, 229, 17), (0, 0, WIDTH, HEIGHT))
         self.image.set_alpha(128)
         self.rect = self.image.get_rect()
 
-
     def update(self):
         self.life -= 1
         if self.life <= 0:
             self.kill()
-
-        
-
-
-
 
 
 def main():
@@ -459,19 +456,21 @@ def main():
                 if score.value >= 200:
                     score.value -= 200
                     grav.add(Gravity(life))
-            if event.type == pg.KEYDOWN and event.key == pg.K_RSHIFT:  #無敵発動
+            if event.type == pg.KEYDOWN and event.key == pg.K_RSHIFT:  # 無敵発動
                 if score.value >= 100:
                     score.value -= 100
                     bird.state = "hyper"
                     bird.hyper_life = 500
-                    bird.update(key_lst, screen)  #見た目変更のためにアップデート
+                    bird.update(key_lst, screen)  # 見た目変更のためにアップデート
             if event.type == pg.KEYDOWN and event.key == pg.K_e and score.value > 20:
                 emps.add(EMP(emys, bombs))
                 score.value -= 20
             if event.type == pg.KEYDOWN and event.key == pg.K_s:
                 # 防御壁発動条件：sキー押下、スコアが50以上、他の防御壁が存在しない
                 if score.value >= 50 and len(shields) == 0:
-                    shields.add(Shield(bird, 400))  # 防御壁を追加（発動時間400フレーム）
+                    shields.add(
+                        Shield(bird, 400)
+                    )  # 防御壁を追加（発動時間400フレーム）
                     score.value -= 50  # 防御壁発動のためにスコアを消費
         screen.blit(bg_img, [0, 0])
 
@@ -501,15 +500,17 @@ def main():
             exps.add(Explosion(bomb, 50))  # 爆発エフェクト
             score.value += 1  # 1点アップ
 
-        for bomb in pg.sprite.spritecollide(bird, bombs, True):  # こうかとんと衝突した爆弾リスト
-            if bird.state == "normal":  #通常時処理
+        for bomb in pg.sprite.spritecollide(
+            bird, bombs, True
+        ):  # こうかとんと衝突した爆弾リスト
+            if bird.state == "normal":  # 通常時処理
                 if bomb.state != "inactive":
                     bird.change_img(8, screen)  # こうかとん悲しみエフェクト
                     score.update(screen)
                     pg.display.update()
                     time.sleep(2)
                     return
-            elif bird.state == "hyper":  #ハイパー時の無敵処理
+            elif bird.state == "hyper":  # ハイパー時の無敵処理
                 exps.add(Explosion(bomb, 50))  # 爆発エフェクト
                 score.value += 1  # 1点アップ
                 bomb.kill()
