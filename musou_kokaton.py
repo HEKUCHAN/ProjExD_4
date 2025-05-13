@@ -229,6 +229,55 @@ class NeoBeam(pg.sprite.Sprite):
         return beams
 
 
+class Shield(pg.sprite.Sprite):
+    """
+    防御壁に関するクラス
+    """
+    def __init__(self, bird: Bird, life: int):
+        """
+        防御壁Surfaceを生成する
+        引数1 bird：防御するこうかとん
+        引数2 life：発動時間
+        """
+        super().__init__()
+        self.bird = bird
+        self.life = life
+        self.width = 20  # 防御壁の幅
+        self.height = bird.rect.height * 2  # こうかとんの身長の2倍
+        self.image = pg.Surface((self.width, self.height))
+        pg.draw.rect(self.image, (0, 0, 255), (0, 0, self.width, self.height))
+        self.image.set_colorkey((0, 0, 0))
+        self.rect = self.image.get_rect()
+        self.update_position()
+
+    def update_position(self):
+        """
+        こうかとんの向きに応じて防御壁の位置と角度を更新する
+        """
+        vx, vy = self.bird.dire
+        angle = math.degrees(math.atan2(-vy, vx))
+        self.image = pg.Surface((self.width, self.height))
+        pg.draw.rect(self.image, (0, 0, 255), (0, 0, self.width, self.height))
+        self.image.set_colorkey((0, 0, 0))
+        self.image = pg.transform.rotozoom(self.image, angle, 1.0)
+        self.image.set_colorkey((0, 0, 0))  # 回転後も透明化を適用
+        self.rect = self.image.get_rect()
+        self.rect.center = (
+            self.bird.rect.centerx + math.cos(math.radians(angle)) * self.bird.rect.width,
+            self.bird.rect.centery - math.sin(math.radians(angle)) * self.bird.rect.height
+        )
+
+    def update(self):
+        """
+        発動時間を1減算し、こうかとんの向きに応じて位置を更新する
+        発動時間が0未満になったら、防御壁を消去する
+        """
+        self.life -= 1
+        self.update_position()
+        if self.life < 0:
+            self.kill()
+
+
 class Explosion(pg.sprite.Sprite):
     """
     爆発に関するクラス
@@ -388,6 +437,7 @@ def main():
     emys = pg.sprite.Group()
     grav = pg.sprite.Group()
     emps = pg.sprite.Group()
+    shields = pg.sprite.Group()  # 防御壁グループを追加
 
     tmr = 0
     life = 400
@@ -418,6 +468,11 @@ def main():
             if event.type == pg.KEYDOWN and event.key == pg.K_e and score.value > 20:
                 emps.add(EMP(emys, bombs))
                 score.value -= 20
+            if event.type == pg.KEYDOWN and event.key == pg.K_s:
+                # 防御壁発動条件：sキー押下、スコアが50以上、他の防御壁が存在しない
+                if score.value >= 50 and len(shields) == 0:
+                    shields.add(Shield(bird, 400))  # 防御壁を追加（発動時間400フレーム）
+                    score.value -= 50  # 防御壁発動のためにスコアを消費
         screen.blit(bg_img, [0, 0])
 
         if tmr % 200 == 0:  # 200フレームに1回，敵機を出現させる
@@ -441,7 +496,11 @@ def main():
             exps.add(Explosion(bomb, 50))  # 爆発エフェクト
             score.value += 1  # 1点アップ
 
-       
+        # 防御壁と爆弾の衝突判定
+        for bomb in pg.sprite.groupcollide(bombs, shields, True, False).keys():
+            exps.add(Explosion(bomb, 50))  # 爆発エフェクト
+            score.value += 1  # 1点アップ
+
         for bomb in pg.sprite.spritecollide(bird, bombs, True):  # こうかとんと衝突した爆弾リスト
             if bird.state == "normal":  #通常時処理
                 if bomb.state != "inactive":
@@ -477,6 +536,8 @@ def main():
         grav.draw(screen)
         bombs.update()
         bombs.draw(screen)
+        shields.update()  # 防御壁の更新
+        shields.draw(screen)  # 防御壁の描画
         exps.update()
         exps.draw(screen)
         score.update(screen)
